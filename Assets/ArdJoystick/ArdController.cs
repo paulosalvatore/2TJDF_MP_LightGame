@@ -6,114 +6,165 @@ using UnityEngine;
 
 namespace ArdJoystick
 {
-    public class ArdController : MonoBehaviour
-    {
-        public static Dictionary<ArdKeyCode, ArdButton> buttons =
-            new Dictionary<ArdKeyCode, ArdButton>();
+	public class ArdController : MonoBehaviour
+	{
+		public Dictionary<ArdKeyCode, ArdButton> buttons = new Dictionary<ArdKeyCode, ArdButton>();
 
-        [Header("Arduino")]
-        public string port = "COM3";
-        public int baudRate = 9600;
-        private SerialPort serialPort;
+		[Header("Arduino")]
+		public string port = "COM4";
+		public int baudRate = 9600;
+		private SerialPort serialPort;
 
-        private void Awake()
-        {
-            try
-            {
-                serialPort = new SerialPort(port, baudRate)
-                {
-                    ReadTimeout = 10
-                };
-                serialPort.Open();
-            }
-            catch (Exception) { }
+		private void Awake()
+		{
+			try
+			{
+				serialPort = new SerialPort(port, baudRate)
+				{
+					ReadTimeout = 10
+				};
+				serialPort.Open();
+			}
+			catch (Exception e)
+			{
+				Debug.LogError(e);
+			}
 
-            foreach (ArdKeyCode keyCode in Enum.GetValues(typeof(ArdKeyCode)))
-            {
-                ArdButton button = new ArdButton(keyCode);
+			foreach (ArdKeyCode keyCode in Enum.GetValues(typeof(ArdKeyCode)))
+			{
+				ArdButton button = new ArdButton(keyCode);
 
-                buttons.Add(keyCode, button);
-            }
+				buttons.Add(keyCode, button);
+			}
 
-            StartCoroutine(KeysProcess());
+			StartCoroutine(ProcessData());
+		}
 
-            StartCoroutine(ProcessData());
-        }
+		private void LateUpdate()
+		{
+			// Keys Process
+			foreach (KeyValuePair<ArdKeyCode, ArdButton> button in buttons)
+			{
+				button.Value.keyDown = false;
+				button.Value.keyUp = false;
+			}
+		}
 
-        private IEnumerator KeysProcess()
-        {
-            while (true)
-            {
-                foreach (KeyValuePair<ArdKeyCode, ArdButton> button in buttons)
-                {
-                    if (button.Value.processed)
-                    {
-                        button.Value.keyDown = false;
-                        button.Value.keyUp = false;
-                    }
-                    else
-                    {
-                        button.Value.processed = true;
-                    }
-                }
+		public bool GetKeyDown(ArdKeyCode keyCode)
+		{
+			return buttons[keyCode].keyDown;
+		}
 
-                yield return new WaitForEndOfFrame();
-            }
-        }
+		public bool GetKey(ArdKeyCode keyCode)
+		{
+			return buttons[keyCode].keyPress;
+		}
 
-        private IEnumerator ProcessData()
-        {
-            while (true)
-            {
-                try
-                {
-                    //string result = serialPort.ReadLine();
-                    //string result = FakeArduino.ReadLine();
-                    string result = SimulateReadLine();
+		public bool GetKeyUp(ArdKeyCode keyCode)
+		{
+			return buttons[keyCode].keyUp;
+		}
 
-                    string[] resultData = result.Split(';');
+		private IEnumerator ProcessData()
+		{
+			while (true)
+			{
+				yield return new WaitForEndOfFrame();
 
-                    ArdKeyCode[] keyCodes = (ArdKeyCode[])Enum.GetValues(typeof(ArdKeyCode));
-                    for (int i = 0; i < keyCodes.Length; i++)
-                    {
-                        ArdKeyCode keyCode = keyCodes[i];
-                        ArdButton button = buttons[keyCode];
-                        int data = int.Parse(resultData[i]);
+				try
+				{
+					//string result = serialPort.ReadLine();
 
-                        button.ProcessData(data);
-                    }
-                }
-                catch (Exception) { }
+					// Tests
+					string result = SimulateReadLine();
 
-                yield return new WaitForSeconds(0.1f);
-            }
-        }
+					string[] resultData = result.Split(';');
 
-        public static bool GetKeyDown(ArdKeyCode keyCode)
-        {
-            return buttons[keyCode].keyDown;
-        }
+					ArdKeyCode[] keyCodes = (ArdKeyCode[])Enum.GetValues(typeof(ArdKeyCode));
+					for (int i = 0; i < keyCodes.Length; i++)
+					{
+						ArdKeyCode keyCode = keyCodes[i];
+						ArdButton button = buttons[keyCode];
+						int data = int.Parse(resultData[i]);
 
-        public static bool GetKey(ArdKeyCode keyCode)
-        {
-            return buttons[keyCode].keyPress;
-        }
+						button.ProcessData(data);
+					}
+				}
+				catch (Exception e)
+				{
+					Debug.LogError(e);
+				}
+			}
+		}
 
-        public static bool GetKeyUp(ArdKeyCode keyCode)
-        {
-            return buttons[keyCode].keyUp;
-        }
+		private void OnApplicationQuit()
+		{
+			try
+			{
+				serialPort.Close();
+			}
+			catch (Exception e)
+			{
+				Debug.LogError(e);
+			}
+		}
 
-        // Simulate Arduino's ReadLine Method
-        public string SimulateReadLine()
-        {
-            string resultData = "";
-            resultData += (Input.GetKey(KeyCode.A) ? "1" : "0") + ";";
-            resultData += (Input.GetKey(KeyCode.S) ? "1" : "0") + ";";
-            resultData += (Input.GetKey(KeyCode.D) ? "1" : "0") + ";";
-            resultData += (Input.GetKey(KeyCode.F) ? "1" : "0");
+		#region TESTS
 
-            return resultData;
-        }
-    }
+		[Header("Tests")]
+		public float forca = 350f;
+
+		public GameObject[] buttonsRbs;
+
+		private string SimulateReadLine()
+		{
+			string result = "";
+			result += (Input.GetKey(KeyCode.Z) ? "1" : "0") + ";";
+			result += (Input.GetKey(KeyCode.X) ? "1" : "0") + ";";
+			result += (Input.GetKey(KeyCode.C) ? "1" : "0") + ";";
+			result += (Input.GetKey(KeyCode.V) ? "1" : "0");
+			return result;
+		}
+
+		private void Update()
+		{
+			// Test for pausing the game
+			if (GetKeyDown(ArdKeyCode.BUTTON_Y))
+			{
+				Debug.Log("Pausar");
+				Time.timeScale = Time.timeScale != 0 ? 0 : 1;
+			}
+
+			ArdKeyCode[] keyCodes = (ArdKeyCode[])Enum.GetValues(typeof(ArdKeyCode));
+			for (int i = 0; i < keyCodes.Length; i++)
+			{
+				ArdKeyCode keyCode = keyCodes[i];
+				ArdButton button = buttons[keyCode];
+				GameObject buttonRb = buttonsRbs[i];
+
+				Rigidbody rbDown = buttonRb.transform.GetChild(0).GetComponent<Rigidbody>();
+				Rigidbody rbPress = buttonRb.transform.GetChild(1).GetComponent<Rigidbody>();
+				Rigidbody rbUp = buttonRb.transform.GetChild(2).GetComponent<Rigidbody>();
+
+				if (GetKeyDown(keyCode)
+					&& rbDown.velocity == Vector3.zero)
+				{
+					rbDown.AddForce(forca * Vector3.up);
+				}
+				else if (GetKeyUp(keyCode)
+					&& rbUp.velocity == Vector3.zero)
+				{
+					rbUp.AddForce(forca * Vector3.up);
+				}
+
+				if (GetKey(keyCode)
+					&& rbPress.velocity == Vector3.zero)
+				{
+					rbPress.AddForce(forca * Vector3.up);
+				}
+			}
+		}
+
+		#endregion TESTS
+	}
 }
