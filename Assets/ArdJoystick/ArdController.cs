@@ -8,7 +8,7 @@ namespace ArdJoystick
 {
 	public class ArdController : MonoBehaviour
 	{
-		public Dictionary<ArdKeyCode, ArdButton> buttons = new Dictionary<ArdKeyCode, ArdButton>();
+		public static Dictionary<ArdKeyCode, ArdButton> buttons = new Dictionary<ArdKeyCode, ArdButton>();
 
 		[Header("Arduino")]
 		public string port = "COM4";
@@ -50,17 +50,17 @@ namespace ArdJoystick
 			}
 		}
 
-		public bool GetKeyDown(ArdKeyCode keyCode)
+		public static bool GetKeyDown(ArdKeyCode keyCode)
 		{
 			return buttons[keyCode].keyDown;
 		}
 
-		public bool GetKey(ArdKeyCode keyCode)
+		public static bool GetKey(ArdKeyCode keyCode)
 		{
 			return buttons[keyCode].keyPress;
 		}
 
-		public bool GetKeyUp(ArdKeyCode keyCode)
+		public static bool GetKeyUp(ArdKeyCode keyCode)
 		{
 			return buttons[keyCode].keyUp;
 		}
